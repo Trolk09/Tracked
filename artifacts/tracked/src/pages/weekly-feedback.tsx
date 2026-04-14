@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useStore, getChapterName, getSubjectName, startOfWeek } from "@/lib/store";
+import { ConfidenceRating, getChapterName, getSubjectName, startOfWeek, useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,7 @@ import { MessageSquareText, Star } from "lucide-react";
 export default function Feedback() {
   const { state, addFeedback } = useStore();
   const [chapterId, setChapterId] = useState("");
-  const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [confidence, setConfidence] = useState<ConfidenceRating>(3);
   const [notes, setNotes] = useState("");
 
   function submit(event: FormEvent) {
@@ -23,7 +23,7 @@ export default function Feedback() {
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Weekly feedback</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Rate chapter confidence</h1>
-        <p className="mt-2 text-muted-foreground">Weak ratings automatically add a weekend review goal. History stays visible for reflection.</p>
+        <p className="mt-2 text-muted-foreground">These ratings also appear in the subject chapter table. Weak ratings automatically add a weekend review goal.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
@@ -39,9 +39,9 @@ export default function Feedback() {
                 <div>
                   <p className="mb-2 text-sm font-semibold">Confidence rating</p>
                   <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((value) => <Button key={value} type="button" variant={confidence === value ? "default" : "outline"} size="icon" onClick={() => setConfidence(value as 1 | 2 | 3 | 4 | 5)}><Star className="h-4 w-4" /></Button>)}
+                    {[1, 2, 3, 4, 5].map((value) => <Button key={value} type="button" variant={confidence === value ? "default" : "outline"} size="icon" onClick={() => setConfidence(value as ConfidenceRating)}><Star className="h-4 w-4" /></Button>)}
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">1-2 = weak, 3 = improving, 4-5 = confident.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">1-2 = weak, 3 = improving, 4-5 = confident. You can also change this directly in the subject chapter table.</p>
                 </div>
                 <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What felt easy, weak, confusing, or worth revising?" />
                 <Button className="w-full">Save feedback</Button>

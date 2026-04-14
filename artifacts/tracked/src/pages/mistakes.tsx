@@ -1,11 +1,11 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useStore, getChapterName, getSubjectName } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileWarning, Trash2 } from "lucide-react";
+import { FileImage, FileWarning, Trash2 } from "lucide-react";
 
 export default function Mistakes() {
   const { state, addMistake, updateMistake, deleteMistake } = useStore();
@@ -13,23 +13,37 @@ export default function Mistakes() {
   const [question, setQuestion] = useState("");
   const [correction, setCorrection] = useState("");
   const [reason, setReason] = useState("");
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
   const [filterChapter, setFilterChapter] = useState("");
   const mistakes = state.mistakes.filter((mistake) => !filterChapter || mistake.chapterId === filterChapter);
 
+  async function readImages(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
+    const loaded = await Promise.all(files.map((file) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    })));
+    setImageDataUrls((current) => [...current, ...loaded]);
+    event.target.value = "";
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
-    addMistake({ chapterId, question, correction, reason, date: new Date().toISOString().slice(0, 10) });
+    addMistake({ chapterId, question, correction, reason, date: new Date().toISOString().slice(0, 10), imageDataUrls });
     setQuestion("");
     setCorrection("");
     setReason("");
+    setImageDataUrls([]);
   }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Digital mistake journal</p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight">Turn wrong questions into revision fuel</h1>
-        <p className="mt-2 text-muted-foreground">Every chapter can store wrong questions, corrections, reasons, dates, and resolved status.</p>
+        <h1 className="mt-2 text-4xl font-black tracking-tight">Save wrong questions with images</h1>
+        <p className="mt-2 text-muted-foreground">Every chapter can store typed questions, uploaded question images, corrections, reasons, dates, and resolved status.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
@@ -42,7 +56,13 @@ export default function Mistakes() {
                   <option value="">Choose chapter</option>
                   {state.chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{chapter.name} — {getSubjectName(state, chapter.subjectId)}</option>)}
                 </select>
-                <Textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Question you got wrong" required />
+                <Textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Question you got wrong, or add an image below" />
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed bg-emerald-50/70 p-5 text-center text-sm text-muted-foreground">
+                  <FileImage className="mb-2 h-7 w-7 text-primary" />
+                  Upload image(s) of the wrong question
+                  <Input type="file" accept="image/*" multiple className="mt-3" onChange={readImages} />
+                </label>
+                {imageDataUrls.length > 0 ? <div className="grid grid-cols-2 gap-2">{imageDataUrls.map((url, index) => <div key={url} className="relative overflow-hidden rounded-2xl border"><img src={url} alt={`Question upload ${index + 1}`} className="h-28 w-full object-cover" /><Button type="button" size="sm" variant="secondary" className="absolute right-2 top-2" onClick={() => setImageDataUrls((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></div>)}</div> : null}
                 <Textarea value={correction} onChange={(event) => setCorrection(event.target.value)} placeholder="Correct answer / method" />
                 <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why it went wrong" />
                 <Button className="w-full">Save mistake</Button>
@@ -66,10 +86,11 @@ export default function Mistakes() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary">{getChapterName(state, mistake.chapterId)} · {mistake.date}</p>
-                    <h3 className="mt-2 font-bold">{mistake.question}</h3>
+                    <h3 className="mt-2 font-bold">{mistake.question || "Question saved as image"}</h3>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => deleteMistake(mistake.id)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
+                {mistake.imageDataUrls.length > 0 ? <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{mistake.imageDataUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded-2xl border bg-slate-50"><img src={url} alt={`Wrong question ${index + 1}`} className="h-44 w-full object-contain" /></a>)}</div> : null}
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl bg-emerald-50 p-3 text-sm"><b>Correction:</b><br />{mistake.correction || "Not added"}</div>
                   <div className="rounded-2xl bg-orange-50 p-3 text-sm"><b>Reason:</b><br />{mistake.reason || "Not added"}</div>
