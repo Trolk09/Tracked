@@ -61,7 +61,8 @@ export default function Dashboard() {
             {weakChapterList.length === 0 ? <div className="rounded-3xl border border-dashed p-8 text-center text-muted-foreground">No chapter marked weak yet.</div> : null}
             {weakChapterList.map((chapter) => {
               const feedback = getLatestFeedback(state, chapter.id);
-              return <div key={chapter.id} className="rounded-2xl bg-orange-50 p-4 text-sm"><b>{chapter.name}</b><p className="text-muted-foreground">Rating: {feedback?.confidence || "from weakness notes"}/5 · {feedback?.notes || chapter.weakness || "Needs review"}</p></div>;
+              const latestWeakness = chapter.weaknessEntries.slice().reverse()[0];
+              return <div key={chapter.id} className="rounded-2xl bg-orange-50 p-4 text-sm"><b>{chapter.name}</b><p className="text-muted-foreground">Rating: {feedback?.confidence || "from weakness notes"}/5 · {feedback?.notes || latestWeakness?.text || chapter.weakness || "Needs review"}</p>{latestWeakness ? <p className="mt-1 text-xs text-muted-foreground">Latest weakness entry: {latestWeakness.date}</p> : null}</div>;
             })}
           </CardContent>
         </Card>

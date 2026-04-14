@@ -13,7 +13,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Mistake journal entries can include uploaded question images stored as browser data URLs.
 - Focus sessions require a chapter selection, unlock feedback after the session stops or completes, and save goal, completion note, feedback, confidence, and minutes against that chapter.
 - Subject chapter tables show focus session counts/latest goals/latest feedback and weekly confidence ratings; confidence can be changed directly from the table.
-- Dashboard shows weak and confident chapter lists using weakness notes and latest weekly feedback.
+- Subject chapter table source/material entries are stored as dated bullet items. Students can add text/link entries or upload PDFs, images, and other notes documents, stored locally as data URLs.
+- Subject chapter table weakness notes are stored as dated bullet items rather than a single free-text field.
+- Dashboard shows weak and confident chapter lists using weakness bullet entries and latest weekly feedback.
 - Profile lets student or teacher mode create a class, add students/classmates, and track local progress fields for each student.
 - Email reminder dates are shown in the UI, but real email delivery is explicitly not active until an email service is connected.
 

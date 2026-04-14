@@ -28,6 +28,22 @@ export interface Subject {
   name: string;
 }
 
+export interface MaterialEntry {
+  id: string;
+  date: string;
+  title: string;
+  type: "text" | "file";
+  dataUrl?: string;
+  fileName?: string;
+  fileType?: string;
+}
+
+export interface WeaknessEntry {
+  id: string;
+  date: string;
+  text: string;
+}
+
 export interface Chapter {
   id: string;
   subjectId: string;
@@ -35,9 +51,11 @@ export interface Chapter {
   studied: boolean;
   studiedDate?: string;
   sources: string;
+  materials: MaterialEntry[];
   notesStatus: string;
   revisions: Record<RevisionKey, boolean>;
   weakness: string;
+  weaknessEntries: WeaknessEntry[];
 }
 
 export interface Task {
@@ -177,8 +195,22 @@ export function chapterStatus(state: StoreState, chapterId: string) {
   const latest = getLatestFeedback(state, chapterId);
   if (latest?.confidence && latest.confidence <= 2) return "Weak";
   if (latest?.confidence && latest.confidence >= 4) return "Confident";
-  if (chapter?.weakness.trim()) return "Weak";
+  if (chapter?.weakness.trim() || chapter?.weaknessEntries.length) return "Weak";
   return "Improving";
+}
+
+function textToEntries(text: string | undefined, type: "material" | "weakness") {
+  return (text || "")
+    .split("\n")
+    .map((item) => item.replace(/^[-•]\s*/, "").trim())
+    .filter(Boolean)
+    .map((item) => ({
+      id: createId(),
+      date: dateKey(),
+      text: type === "weakness" ? item : undefined,
+      title: type === "material" ? item : undefined,
+      type: "text" as const,
+    }));
 }
 
 function normalizeStudents(students: unknown): ClassStudent[] {
@@ -209,10 +241,12 @@ function normalizeState(value: unknown): StoreState {
     subjects: stored?.subjects || [],
     chapters: (stored?.chapters || []).map((chapter) => ({
       ...chapter,
-      sources: chapter.sources || "",
+      sources: chapter.materials ? (chapter.sources || "") : "",
+      materials: chapter.materials || textToEntries(chapter.sources, "material").map((item) => ({ id: item.id, date: item.date, title: item.title || "", type: "text" as const })),
       notesStatus: chapter.notesStatus || "none",
       revisions: { d1: false, d3: false, d7: false, d14: false, d30: false, ...(chapter.revisions || {}) },
-      weakness: chapter.weakness || "",
+      weakness: chapter.weaknessEntries ? (chapter.weakness || "") : "",
+      weaknessEntries: chapter.weaknessEntries || textToEntries(chapter.weakness, "weakness").map((item) => ({ id: item.id, date: item.date, text: item.text || "" })),
     })),
     tasks: stored?.tasks || [],
     sessions: (stored?.sessions || []).map((session) => ({ ...session, chapterId: session.chapterId || "", feedback: session.feedback || "", confidence: session.confidence || 3 })),
@@ -302,9 +336,11 @@ export function useStore() {
         name: clean,
         studied: false,
         sources: "",
+        materials: [],
         notesStatus: "none",
         revisions: { d1: false, d3: false, d7: false, d14: false, d30: false },
         weakness: "",
+        weaknessEntries: [],
       }],
     }));
   }, []);
@@ -330,6 +366,38 @@ export function useStore() {
       mistakes: current.mistakes.filter((mistake) => mistake.chapterId !== id),
       feedback: current.feedback.filter((item) => item.chapterId !== id),
       sessions: current.sessions.filter((session) => session.chapterId !== id),
+    }));
+  }, []);
+
+  const addMaterialEntry = useCallback((chapterId: string, entry: Omit<MaterialEntry, "id" | "date">) => {
+    const title = entry.title.trim();
+    if (!chapterId || !title) return;
+    setState((current) => ({
+      ...current,
+      chapters: current.chapters.map((chapter) => chapter.id === chapterId ? { ...chapter, materials: [...(chapter.materials || []), { ...entry, title, id: createId(), date: dateKey() }] } : chapter),
+    }));
+  }, []);
+
+  const deleteMaterialEntry = useCallback((chapterId: string, entryId: string) => {
+    setState((current) => ({
+      ...current,
+      chapters: current.chapters.map((chapter) => chapter.id === chapterId ? { ...chapter, materials: (chapter.materials || []).filter((entry) => entry.id !== entryId) } : chapter),
+    }));
+  }, []);
+
+  const addWeaknessEntry = useCallback((chapterId: string, text: string) => {
+    const clean = text.trim();
+    if (!chapterId || !clean) return;
+    setState((current) => ({
+      ...current,
+      chapters: current.chapters.map((chapter) => chapter.id === chapterId ? { ...chapter, weaknessEntries: [...(chapter.weaknessEntries || []), { id: createId(), date: dateKey(), text: clean }] } : chapter),
+    }));
+  }, []);
+
+  const deleteWeaknessEntry = useCallback((chapterId: string, entryId: string) => {
+    setState((current) => ({
+      ...current,
+      chapters: current.chapters.map((chapter) => chapter.id === chapterId ? { ...chapter, weaknessEntries: (chapter.weaknessEntries || []).filter((entry) => entry.id !== entryId) } : chapter),
     }));
   }, []);
 
@@ -431,6 +499,10 @@ export function useStore() {
     addChapter,
     updateChapter,
     deleteChapter,
+    addMaterialEntry,
+    deleteMaterialEntry,
+    addWeaknessEntry,
+    deleteWeaknessEntry,
     addTask,
     updateTask,
     deleteTask,

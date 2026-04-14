@@ -1,19 +1,20 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { Link } from "wouter";
 import { ConfidenceRating, chapterStatus, getLatestFeedback, getSubjectName, revisionDate, revisionLabels, RevisionKey, useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, Plus, Trash2 } from "lucide-react";
+import { BookOpen, FileText, Plus, Trash2 } from "lucide-react";
 
 const revisionKeys: RevisionKey[] = ["d1", "d3", "d7", "d14", "d30"];
 
 export default function Syllabus() {
-  const { state, addSubject, deleteSubject, addChapter, updateChapter, deleteChapter, setChapterConfidence } = useStore();
+  const { state, addSubject, deleteSubject, addChapter, updateChapter, deleteChapter, setChapterConfidence, addMaterialEntry, deleteMaterialEntry, addWeaknessEntry, deleteWeaknessEntry } = useStore();
   const [subjectName, setSubjectName] = useState("");
   const [chapterName, setChapterName] = useState<Record<string, string>>({});
+  const [materialText, setMaterialText] = useState<Record<string, string>>({});
+  const [weaknessText, setWeaknessText] = useState<Record<string, string>>({});
 
   function submitSubject(event: FormEvent) {
     event.preventDefault();
@@ -27,12 +28,34 @@ export default function Syllabus() {
     setChapterName((current) => ({ ...current, [subjectId]: "" }));
   }
 
+  function addMaterial(chapterId: string) {
+    addMaterialEntry(chapterId, { title: materialText[chapterId] || "", type: "text" });
+    setMaterialText((current) => ({ ...current, [chapterId]: "" }));
+  }
+
+  function addWeakness(chapterId: string) {
+    addWeaknessEntry(chapterId, weaknessText[chapterId] || "");
+    setWeaknessText((current) => ({ ...current, [chapterId]: "" }));
+  }
+
+  async function uploadFiles(chapterId: string, event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []);
+    const loaded = await Promise.all(files.map((file) => new Promise<{ title: string; dataUrl: string; fileName: string; fileType: string }>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ title: file.name, dataUrl: String(reader.result), fileName: file.name, fileType: file.type || "application/octet-stream" });
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    })));
+    loaded.forEach((file) => addMaterialEntry(chapterId, { title: file.title, type: "file", dataUrl: file.dataUrl, fileName: file.fileName, fileType: file.fileType }));
+    event.target.value = "";
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Syllabus & chapter tables</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Build your own syllabus</h1>
-        <p className="mt-2 text-muted-foreground">Each subject has its own table with revision status, session feedback, weekly confidence, flashcards, mistakes, materials, and weakness notes.</p>
+        <p className="mt-2 text-muted-foreground">Each subject has its own table with revision status, document uploads, dated bullet materials, dated weakness bullets, session feedback, weekly confidence, flashcards, and mistakes.</p>
       </div>
 
       <Card className="bg-white/90">
@@ -72,7 +95,7 @@ export default function Syllabus() {
 
               {chapters.length > 0 ? (
                 <div className="overflow-x-auto rounded-3xl border">
-                  <table className="w-full min-w-[1680px] text-sm">
+                  <table className="w-full min-w-[1900px] text-sm">
                     <thead className="bg-emerald-50 text-left text-xs uppercase tracking-wide text-slate-600">
                       <tr>
                         <th className="p-3">Chapter</th>
@@ -84,7 +107,7 @@ export default function Syllabus() {
                         <th className="p-3">Weekly confidence</th>
                         <th className="p-3">Flashcards</th>
                         <th className="p-3">Mistakes</th>
-                        <th className="p-3">Weakness / other</th>
+                        <th className="p-3">Weakness dated bullets</th>
                         <th className="p-3">Actions</th>
                       </tr>
                     </thead>
@@ -101,14 +124,55 @@ export default function Syllabus() {
                           <tr key={chapter.id} className={`border-t ${statusClass}`}>
                             <td className="p-3 font-semibold">{chapter.name}<div className="text-xs font-normal text-muted-foreground">{getSubjectName(state, chapter.subjectId)}</div><div className="mt-2 inline-flex rounded-full bg-white px-2 py-1 text-xs font-bold shadow-sm">{status}</div></td>
                             <td className="p-3"><Checkbox checked={chapter.studied} onCheckedChange={(checked) => updateChapter(chapter.id, { studied: Boolean(checked) })} /><div className="mt-1 text-xs text-muted-foreground">{chapter.studiedDate?.slice(0, 10) || "Not yet"}</div></td>
-                            <td className="p-3"><Textarea className="min-h-20" value={chapter.sources} onChange={(event) => updateChapter(chapter.id, { sources: event.target.value })} placeholder="Book, PDF, video, notes link" /></td>
+                            <td className="p-3 align-top">
+                              <div className="w-72 space-y-3">
+                                <div className="flex gap-2">
+                                  <Input value={materialText[chapter.id] || ""} onChange={(event) => setMaterialText((current) => ({ ...current, [chapter.id]: event.target.value }))} placeholder="Book, link, note, video, PDF name..." />
+                                  <Button type="button" size="sm" variant="outline" onClick={() => addMaterial(chapter.id)}>Add</Button>
+                                </div>
+                                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed bg-white p-3 text-xs text-muted-foreground">
+                                  <FileText className="h-4 w-4 text-primary" />Upload PDF or notes document
+                                  <Input type="file" multiple className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,image/*,application/pdf" onChange={(event) => uploadFiles(chapter.id, event)} />
+                                </label>
+                                {(chapter.materials || []).length === 0 ? <p className="rounded-2xl border border-dashed bg-white p-3 text-xs text-muted-foreground">No material entries yet.</p> : null}
+                                <ul className="space-y-2">
+                                  {(chapter.materials || []).map((entry) => (
+                                    <li key={entry.id} className="flex gap-2 rounded-2xl bg-white p-3 text-xs shadow-sm">
+                                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-semibold text-slate-900">{entry.type === "file" && entry.dataUrl ? <a href={entry.dataUrl} download={entry.fileName || entry.title} className="underline underline-offset-2">{entry.title}</a> : entry.title}</div>
+                                        <div className="text-muted-foreground">{entry.date}{entry.type === "file" ? ` · ${entry.fileType || "document"}` : ""}</div>
+                                      </div>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMaterialEntry(chapter.id, entry.id)}><Trash2 className="h-3 w-3" /></Button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </td>
                             <td className="p-3"><select className="rounded-md border bg-background px-2 py-2" value={chapter.notesStatus} onChange={(event) => updateChapter(chapter.id, { notesStatus: event.target.value })}><option value="none">No notes</option><option value="draft">Draft</option><option value="complete">Complete</option><option value="needs-review">Needs review</option></select></td>
                             {revisionKeys.map((key) => <td key={key} className="p-3 align-top"><Checkbox disabled={!chapter.studied} checked={chapter.revisions[key]} onCheckedChange={(checked) => updateChapter(chapter.id, { revisions: { ...chapter.revisions, [key]: Boolean(checked) } })} /><div className="mt-1 text-xs text-muted-foreground">{chapter.studied ? revisionDate(chapter, key) : "Study first"}</div></td>)}
                             <td className="p-3 align-top"><div className="rounded-2xl bg-white p-3 shadow-sm"><b>{sessions.length}</b> session{sessions.length === 1 ? "" : "s"}<p className="mt-1 text-xs text-muted-foreground">Latest goal: {latestSession?.task || "None"}</p><p className="text-xs text-muted-foreground">Feedback: {latestSession?.feedback || latestSession?.plannedVsCompleted || "None yet"}</p><Link href="/focus"><Button className="mt-2" size="sm" variant="outline">Start session</Button></Link></div></td>
                             <td className="p-3 align-top"><select className="rounded-md border bg-background px-2 py-2" value={latestFeedback?.confidence || 3} onChange={(event) => setChapterConfidence(chapter.id, Number(event.target.value) as ConfidenceRating)}><option value={1}>1 - weak</option><option value={2}>2 - weak</option><option value={3}>3 - improving</option><option value={4}>4 - confident</option><option value={5}>5 - confident</option></select><p className="mt-2 text-xs text-muted-foreground">Weekly note: {latestFeedback?.notes || "No note yet"}</p></td>
                             <td className="p-3"><Link href="/flashcards"><Button size="sm" variant="outline">{flashcardCount} cards</Button></Link></td>
                             <td className="p-3"><Link href="/mistakes"><Button size="sm" variant="outline">{mistakeCount} wrong</Button></Link></td>
-                            <td className="p-3"><Textarea className="min-h-20" value={chapter.weakness} onChange={(event) => updateChapter(chapter.id, { weakness: event.target.value })} placeholder="Weak formulas, silly mistakes, needs practice..." /></td>
+                            <td className="p-3 align-top">
+                              <div className="w-72 space-y-3">
+                                <div className="flex gap-2">
+                                  <Input value={weaknessText[chapter.id] || ""} onChange={(event) => setWeaknessText((current) => ({ ...current, [chapter.id]: event.target.value }))} placeholder="Add weakness or mistake pattern" />
+                                  <Button type="button" size="sm" variant="outline" onClick={() => addWeakness(chapter.id)}>Add</Button>
+                                </div>
+                                {(chapter.weaknessEntries || []).length === 0 ? <p className="rounded-2xl border border-dashed bg-white p-3 text-xs text-muted-foreground">No weakness bullets yet.</p> : null}
+                                <ul className="space-y-2">
+                                  {(chapter.weaknessEntries || []).map((entry) => (
+                                    <li key={entry.id} className="flex gap-2 rounded-2xl bg-white p-3 text-xs shadow-sm">
+                                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                                      <div className="flex-1"><div className="font-semibold text-slate-900">{entry.text}</div><div className="text-muted-foreground">{entry.date}</div></div>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteWeaknessEntry(chapter.id, entry.id)}><Trash2 className="h-3 w-3" /></Button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </td>
                             <td className="p-3"><Button size="icon" variant="ghost" onClick={() => deleteChapter(chapter.id)}><Trash2 className="h-4 w-4" /></Button></td>
                           </tr>
                         );
