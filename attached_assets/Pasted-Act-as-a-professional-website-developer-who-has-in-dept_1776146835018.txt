@@ -1,0 +1,15 @@
+Act as a professional website developer, who has in depth knowledge of student and teacher friendly website making, and its interface. 
+Create a website named "Tracked" which has the following functions: 
+
+A teacher can create a teacher account and add its class students in it OR a student can individually sign in. 
+The website asks for the students class, syllabus (subjects, chapters(or topics) in each subjects), and when student gets exam dates , he can add that also. 
+The student enters what he wants to study in a particular month or week (his goals) and plan what to study on which date. Whenever that date comes, the student gets reminder for that.He can also add to remove his goals on the very particular day and plan his daily tasks.
+The tasks will come as a to do list format, and when task is completed, one can tick a checkbox.
+If he or she misses a task, it will be carry forwarded to the next day.
+Whenever a student studies a particular chapter, he has to update it in the website. Then the website shall keep reminding him for revision ( say he studied it on day 0, reminder of revisions will come on day 1, day 3, day 7, day 14 and day 30); if student misses a revision, he has to do it within next 2 days, or another revision has to be done on 7th day after last and final revision on usual schedule (eg after day 30 if a revision is missed, revision will have to be done on day 37 and so on if there's more backlog) 
+The website gives reminders to the student on the days of revisions. The revision plan for each subject will be maintained and one can tick checkboxes when revision is completed. Students can also arrange their study notes, pdf etc subject and chapterwise.
+The app also has options for focus sessions of different times, where the students enters what he has to study before the starting the timer of focus session, and after study enter how much he did. 
+Along with revision, student has to enter his status of the chapters he has studied weekly through a weekly feedback form sort of (confident,weak etc), and the chapter is highlighted if student is weak at it and accordingly a reminder is added to weekend.
+
+In case of teachers, they can see how there i student is doing and provide personal attention according to his feedbacks. 
+Teacher can also provide practice paper to students and add its deadline. The student's study calender shall be updated accordingly, and he will get reminded for it.
